@@ -1,12 +1,511 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My First Git page Open</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2048</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #12111a;
+    --panel: #1c1a28;
+    --grid-bg: #241f36;
+    --cell-empty: #2c2740;
+    --ink: #ede9f7;
+    --ink-dim: #9a91b8;
+    --accent-a: #ff6ec7;
+    --accent-b: #5ee7df;
+    --accent-c: #ffd166;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 20% 10%, rgba(255,110,199,0.10), transparent 45%),
+      radial-gradient(circle at 85% 85%, rgba(94,231,223,0.10), transparent 45%),
+      var(--bg);
+    font-family: 'Inter', sans-serif;
+    color: var(--ink);
+    padding: 24px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 40px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    background: linear-gradient(120deg, var(--accent-a), var(--accent-c));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .tagline {
+    font-size: 12px;
+    color: var(--ink-dim);
+    margin-top: 2px;
+    letter-spacing: 0.02em;
+  }
+
+  .scores {
+    display: flex;
+    gap: 8px;
+  }
+
+  .score-box {
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 8px 14px;
+    text-align: center;
+    min-width: 64px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .score-box .label {
+    font-size: 10px;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .score-box .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+  }
+
+  .hint {
+    font-size: 13px;
+    color: var(--ink-dim);
+  }
+
+  button#restart {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--bg);
+    background: linear-gradient(120deg, var(--accent-b), var(--accent-a));
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+
+  button#restart:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+  }
+
+  button#restart:focus-visible {
+    outline: 2px solid var(--accent-c);
+    outline-offset: 2px;
+  }
+
+  .board-wrap {
+    position: relative;
+  }
+
+  .board {
+    background: var(--grid-bg);
+    border-radius: 16px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 10px;
+    aspect-ratio: 1 / 1;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+  }
+
+  .cell {
+    background: var(--cell-empty);
+    border-radius: 10px;
+  }
+
+  .tile-layer {
+    position: absolute;
+    inset: 10px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .tile {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    transition: top 0.12s ease, left 0.12s ease;
+    animation: pop 0.15s ease;
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0.4; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tile { animation: none; transition: none; }
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(18, 17, 26, 0.88);
+    border-radius: 16px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-align: center;
+    backdrop-filter: blur(2px);
+  }
+
+  .overlay.show { display: flex; }
+
+  .overlay .msg {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+  }
+
+  .overlay button {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--bg);
+    background: var(--accent-c);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+
+  footer {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--ink-dim);
+    text-align: center;
+  }
+
+  footer kbd {
+    background: var(--panel);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  /* touch swipe area feedback not needed visually */
+</style>
 </head>
 <body>
-    <h1>Hello My Page</h1>
-    <h2>Welcome</h2>
+
+<div class="app">
+  <header>
+    <div>
+      <h1>2048</h1>
+      <div class="tagline">타일을 합쳐 2048을 만들어보세요</div>
+    </div>
+    <div class="scores">
+      <div class="score-box">
+        <div class="label">Score</div>
+        <div class="value" id="score">0</div>
+      </div>
+      <div class="score-box">
+        <div class="label">Best</div>
+        <div class="value" id="best">0</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="hint">방향키 또는 스와이프로 이동</div>
+    <button id="restart">다시 시작</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board">
+      <!-- 16 background cells -->
+    </div>
+    <div class="tile-layer" id="tileLayer"></div>
+    <div class="overlay" id="overlay">
+      <div class="msg" id="overlayMsg">Game Over</div>
+      <button id="overlayRestart">다시 도전</button>
+    </div>
+  </div>
+
+  <footer>← ↑ → ↓ 로 이동 · <kbd>R</kbd> 재시작</footer>
+</div>
+
+<script>
+(function () {
+  const SIZE = 4;
+  const boardEl = document.getElementById('board');
+  const tileLayer = document.getElementById('tileLayer');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const overlay = document.getElementById('overlay');
+  const overlayMsg = document.getElementById('overlayMsg');
+  const restartBtn = document.getElementById('restart');
+  const overlayRestartBtn = document.getElementById('overlayRestart');
+
+  let grid, score, best, gameOver, won, wonAcknowledged;
+
+  const tileColors = {
+    2:    { bg: '#2c2740', fg: '#ede9f7' },
+    4:    { bg: '#3a3153', fg: '#ede9f7' },
+    8:    { bg: '#5b4b8a', fg: '#ffffff' },
+    16:   { bg: '#7a4fb0', fg: '#ffffff' },
+    32:   { bg: '#a349c9', fg: '#ffffff' },
+    64:   { bg: '#d43fb0', fg: '#ffffff' },
+    128:  { bg: '#ff6ec7', fg: '#1c1a28' },
+    256:  { bg: '#ff8fb3', fg: '#1c1a28' },
+    512:  { bg: '#ffb069', fg: '#1c1a28' },
+    1024: { bg: '#ffd166', fg: '#1c1a28' },
+    2048: { bg: '#5ee7df', fg: '#1c1a28' },
+  };
+  function colorFor(v) {
+    if (tileColors[v]) return tileColors[v];
+    return { bg: '#5ee7df', fg: '#1c1a28' };
+  }
+
+  function init() {
+    grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+    score = 0;
+    gameOver = false;
+    won = false;
+    wonAcknowledged = false;
+    best = Number(localStorage.getItem('game2048_best') || 0);
+    overlay.classList.remove('show');
+    buildBackgroundCells();
+    addRandomTile();
+    addRandomTile();
+    render();
+  }
+
+  function buildBackgroundCells() {
+    boardEl.innerHTML = '';
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      boardEl.appendChild(c);
+    }
+  }
+
+  function addRandomTile() {
+    const empties = [];
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (grid[r][c] === 0) empties.push([r, c]);
+    if (empties.length === 0) return;
+    const [r, c] = empties[Math.floor(Math.random() * empties.length)];
+    grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+  }
+
+  function cellSize() {
+    const boardRect = boardEl.getBoundingClientRect();
+    const gap = 10;
+    const padding = 10;
+    return (boardRect.width - padding * 2 - gap * (SIZE - 1)) / SIZE;
+  }
+
+  function render() {
+    const size = cellSize();
+    const gap = 10;
+    tileLayer.innerHTML = '';
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const v = grid[r][c];
+        if (v === 0) continue;
+        const el = document.createElement('div');
+        el.className = 'tile';
+        el.textContent = v;
+        const { bg, fg } = colorFor(v);
+        el.style.background = bg;
+        el.style.color = fg;
+        el.style.width = size + 'px';
+        el.style.height = size + 'px';
+        el.style.left = c * (size + gap) + 'px';
+        el.style.top = r * (size + gap) + 'px';
+        el.style.fontSize = (v >= 1024 ? size * 0.32 : size * 0.4) + 'px';
+        tileLayer.appendChild(el);
+      }
+    }
+    scoreEl.textContent = score;
+    if (score > best) best = score;
+    bestEl.textContent = best;
+    localStorage.setItem('game2048_best', String(best));
+  }
+
+  function cloneGrid(g) {
+    return g.map(row => row.slice());
+  }
+
+  function gridsEqual(a, b) {
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++)
+        if (a[r][c] !== b[r][c]) return false;
+    return true;
+  }
+
+  // 왼쪽으로 압축 + 병합하는 한 줄 처리
+  function slideRowLeft(row) {
+    let arr = row.filter(v => v !== 0);
+    let gained = 0;
+    for (let i = 0; i < arr.length - 1; i++) {
+      if (arr[i] === arr[i + 1]) {
+        arr[i] *= 2;
+        gained += arr[i];
+        arr[i + 1] = 0;
+        if (arr[i] === 2048) won = true;
+      }
+    }
+    arr = arr.filter(v => v !== 0);
+    while (arr.length < SIZE) arr.push(0);
+    return { row: arr, gained };
+  }
+
+  function rotateGridCW(g) {
+    const n = SIZE;
+    const res = Array.from({ length: n }, () => Array(n).fill(0));
+    for (let r = 0; r < n; r++)
+      for (let c = 0; c < n; c++)
+        res[c][n - 1 - r] = g[r][c];
+    return res;
+  }
+
+  function move(direction) {
+    if (gameOver) return;
+    const before = cloneGrid(grid);
+    let rotations = 0;
+    // 왼쪽 기준 로직 재사용을 위해 방향에 따라 회전
+    if (direction === 'up') rotations = 3;
+    else if (direction === 'right') rotations = 2;
+    else if (direction === 'down') rotations = 1;
+    else rotations = 0; // left
+
+    let working = cloneGrid(grid);
+    for (let i = 0; i < rotations; i++) working = rotateGridCW(working);
+
+    let totalGain = 0;
+    for (let r = 0; r < SIZE; r++) {
+      const { row, gained } = slideRowLeft(working[r]);
+      working[r] = row;
+      totalGain += gained;
+    }
+
+    // 역회전
+    const backRotations = (4 - rotations) % 4;
+    for (let i = 0; i < backRotations; i++) working = rotateGridCW(working);
+
+    grid = working;
+    if (!gridsEqual(before, grid)) {
+      score += totalGain;
+      addRandomTile();
+      render();
+      checkGameState();
+    }
+  }
+
+  function canMove() {
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (grid[r][c] === 0) return true;
+        if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return true;
+        if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return true;
+      }
+    }
+    return false;
+  }
+
+  function checkGameState() {
+    if (won && !wonAcknowledged) {
+      wonAcknowledged = true;
+      overlayMsg.textContent = '🎉 2048 달성!';
+      overlay.classList.add('show');
+      return;
+    }
+    if (!canMove()) {
+      gameOver = true;
+      overlayMsg.textContent = 'Game Over';
+      overlay.classList.add('show');
+    }
+  }
+
+  // 키보드 입력
+  window.addEventListener('keydown', (e) => {
+    const map = {
+      ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down',
+    };
+    if (map[e.key]) {
+      e.preventDefault();
+      move(map[e.key]);
+    } else if (e.key.toLowerCase() === 'r') {
+      init();
+    }
+  });
+
+  // 터치 스와이프
+  let touchStartX = 0, touchStartY = 0;
+  document.addEventListener('touchstart', (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+    const absX = Math.abs(dx), absY = Math.abs(dy);
+    if (Math.max(absX, absY) < 24) return;
+    if (absX > absY) {
+      move(dx > 0 ? 'right' : 'left');
+    } else {
+      move(dy > 0 ? 'down' : 'up');
+    }
+  }, { passive: true });
+
+  restartBtn.addEventListener('click', init);
+  overlayRestartBtn.addEventListener('click', init);
+  window.addEventListener('resize', render);
+
+  init();
+})();
+</script>
+
 </body>
 </html>
